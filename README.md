@@ -11,13 +11,13 @@ This repository has two intentionally safe workflows: one for F5OS and one for B
 - `playbooks/bigip_virtual_server_example.yml` — a deliberately incomplete change example.
 - `requirements.yml` and `execution-environment.yml` — F5 Ansible dependencies for AWX.
 
-## 1. Put this in GitLab
+## 1. Put this in GitHub
 
-1. Create a **private** GitLab project, for example `network/f5-automation`.
-2. In this folder, initialize Git, commit these files, and push the default branch.
+1. This starter is published as a **private** GitHub repository.
+2. Make changes in a branch, then use a pull request to review them before merging into `main`.
 3. Add real inventory only in AWX, or copy the example to `inventory/hosts.yml` locally. Never commit credentials, tokens, backups, or production device exports.
 
-The included pipeline performs syntax checks on each branch and merge request. It never contacts your devices.
+The included GitHub Actions workflow performs syntax checks on each push and pull request. It never contacts your devices.
 
 ## 2. Build an AWX execution environment
 
@@ -31,7 +31,7 @@ Create these objects in this order:
 
 1. **Credential** → type **Machine**. Set the F5 management username and password. Attach it to both job templates. Use an account with only the privileges the job needs.
 2. **Inventory** → name it `F5 Lab`. Add groups `f5os` and `bigip`; add each device as a host and set its `ansible_host` variable to its management IP or DNS name. Do not put passwords in host variables.
-3. **Project** → source control type **Git**, with your GitLab clone URL and a GitLab Personal Access Token or deploy token credential. Set the branch to `main`.
+3. **Project** → source control type **Git**, with your GitHub clone URL and a GitHub Personal Access Token or deploy key credential. Set the branch to `main`.
 4. **Job Template** → create `F5OS connectivity check`; select the `f5os` inventory group, project, F5OS machine credential, custom execution environment, and `playbooks/f5os_connectivity.yml`. Turn on **Update Revision on Launch**.
 5. **Job Template** → create `BIG-IP connectivity check`; select the `bigip` inventory group, project, BIG-IP machine credential, custom execution environment, and `playbooks/bigip_connectivity.yml`. Turn on **Update Revision on Launch**.
 
