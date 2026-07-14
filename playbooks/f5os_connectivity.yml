@@ -1,0 +1,17 @@
+---
+# Read-only smoke test. It makes no configuration changes.
+- name: Verify F5OS connectivity and collect system facts
+  hosts: f5os
+  gather_facts: false
+  collections:
+    - f5networks.f5os
+  tasks:
+    - name: Collect F5OS system information
+      f5os_device_info:
+        gather_subset:
+          - system-info
+      register: f5os_info
+
+    - name: Show F5OS platform
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }}: {{ f5os_info.system_info.platform_type | default('unknown platform') }}"

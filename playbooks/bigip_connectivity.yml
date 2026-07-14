@@ -1,0 +1,18 @@
+---
+# Read-only smoke test. It makes no configuration changes.
+- name: Verify BIG-IP connectivity and collect system facts
+  hosts: bigip
+  gather_facts: false
+  collections:
+    - f5networks.f5_modules
+  tasks:
+    - name: Collect BIG-IP device information
+      bigip_device_info:
+        gather_subset:
+          - system-info
+        provider: "{{ bigip_provider }}"
+      register: bigip_info
+
+    - name: Show BIG-IP hostname
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }}: {{ bigip_info.system_info.hostname | default('unknown hostname') }}"

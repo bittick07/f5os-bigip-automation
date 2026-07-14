@@ -1,0 +1,12 @@
+---
+# Copy this file to inventory/hosts.yml for local use. Do not commit real IPs or secrets.
+all:
+  children:
+    f5os:
+      hosts:
+        rseries-01:
+          ansible_host: 192.0.2.10
+    bigip:
+      hosts:
+        bigip-01:
+          ansible_host: 192.0.2.20

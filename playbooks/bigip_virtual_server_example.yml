@@ -1,0 +1,22 @@
+---
+# Example only: apply after connectivity.yml succeeds and you replace the variables.
+- name: Manage a single BIG-IP virtual server
+  hosts: bigip
+  gather_facts: false
+  collections:
+    - f5networks.f5_modules
+  vars:
+    virtual_server_name: web_443
+    virtual_server_destination: 192.0.2.100
+    virtual_server_port: 443
+  tasks:
+    - name: Create or update a virtual server
+      bigip_virtual_server:
+        name: "{{ virtual_server_name }}"
+        destination: "{{ virtual_server_destination }}"
+        port: "{{ virtual_server_port }}"
+        pool: /Common/replace_me_pool
+        profiles:
+          - /Common/tcp
+        state: present
+        provider: "{{ bigip_provider }}"

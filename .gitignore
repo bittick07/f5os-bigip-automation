@@ -1,0 +1,12 @@
+# Secrets and local inventory
+inventory/hosts.yml
+inventory/host_vars/
+*.retry
+
+# Ansible and Python working files
+collections/
+__pycache__/
+.venv/
+
+# AWX-generated private artifacts
+artifacts/

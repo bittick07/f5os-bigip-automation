@@ -1,0 +1,6 @@
+---
+collections:
+  - name: f5networks.f5os
+    version: 1.22.0
+  - name: f5networks.f5_modules
+  - name: ansible.netcommon
