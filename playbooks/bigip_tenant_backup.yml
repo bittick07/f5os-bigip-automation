@@ -1,0 +1,32 @@
+---
+- name: Create an on-device UCS backup for each BIG-IP tenant
+  hosts: f5
+  gather_facts: false
+  collections:
+    - f5networks.f5_modules
+
+  vars_files:
+    - ../group_vars/bigip_tenant_backup.yml
+
+  vars:
+    # Allow an AWX override while retaining a safe filename prefix.
+    bigip_ucs_backup_prefix_effective: >-
+      {{ bigip_ucs_backup_prefix | default('awx-backup', true) }}
+
+  tasks:
+    - name: Build the UCS backup filename
+      ansible.builtin.set_fact:
+        bigip_ucs_backup_filename: >-
+          {{ bigip_ucs_backup_prefix_effective }}-{{ inventory_hostname | regex_replace('[^A-Za-z0-9._-]', '-') }}-{{ now(utc=true, fmt='%Y%m%dT%H%M%SZ') }}.ucs
+
+    - name: Create the UCS backup on the BIG-IP tenant
+      f5networks.f5_modules.bigip_command:
+        commands:
+          - "save sys ucs {{ bigip_ucs_backup_filename }}"
+        provider: "{{ bigip_provider | combine({'timeout': 300}) }}"
+
+    - name: Report the on-device backup location
+      ansible.builtin.debug:
+        msg: >-
+          Created /var/local/ucs/{{ bigip_ucs_backup_filename }} on
+          {{ inventory_hostname }}. The backup remains on the device.

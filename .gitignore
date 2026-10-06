@@ -1,5 +1,4 @@
-# Secrets and local inventory
-inventory/hosts.yml
+# Secrets and local host overrides
 inventory/host_vars/
 *.retry
 
