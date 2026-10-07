@@ -1,0 +1,59 @@
+---
+ansible_connection: local
+bigip_provider:
+  server: "{{ ansible_host }}"
+  user: "{{ ansible_user }}"
+  password: "{{ ansible_password }}"
+  validate_certs: true
+
+# This job manages self IPs on an EXISTING HA pair. It does not create device
+# trust, config-sync/failover addresses, device groups, or traffic groups.
+# Set true only after those are configured. VLANs must exist on both tenants.
+bigip_ha_ready: false
+
+# Replace with the exact AWX inventory host names (management IPs are valid).
+# Both hosts must be in f5. Use AWX Limit to select exactly these two hosts.
+bigip_ha_members:
+  - "192.0.2.11"
+  - "192.0.2.12"
+
+# Choose the member whose shared configuration should be synchronized outward.
+# This is not necessarily whichever member is currently active.
+bigip_ha_sync_source: "192.0.2.11"
+bigip_ha_floating_traffic_group: /Common/traffic-group-1
+
+# Optional explicit sync copies ALL pending syncable configuration, not only
+# self IPs. Verify the source is authoritative before enabling it.
+# With false, use existing auto-sync or perform and verify a manual sync.
+bigip_ha_sync_enabled: false
+bigip_ha_device_group: ""
+
+# EXAMPLE addresses and VLAN names: replace before running.
+# Local self IP object names can match across members; their addresses differ.
+# 'none' suits data VLAN examples. Existing HA/config-sync self IPs may need
+# different allowed services; do not apply these examples to them unchanged.
+bigip_ha_local_self_ips:
+  "192.0.2.11":
+    - name: self_internal
+      address: "198.51.100.11"
+      netmask: "255.255.255.0"
+      vlan: /Common/internal
+      partition: Common
+      allow_service: [none]
+  "192.0.2.12":
+    - name: self_internal
+      address: "198.51.100.12"
+      netmask: "255.255.255.0"
+      vlan: /Common/internal
+      partition: Common
+      allow_service: [none]
+
+# Shared address: define once. The playbook creates it on the sync source;
+# configuration synchronization delivers it to the peer.
+bigip_ha_floating_self_ips:
+  - name: self_internal_floating
+    address: "198.51.100.10"
+    netmask: "255.255.255.0"
+    vlan: /Common/internal
+    partition: Common
+    allow_service: [none]
