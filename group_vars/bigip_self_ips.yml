@@ -1,0 +1,33 @@
+---
+# Matches the connection settings in bigip_tenant_backup.yml.
+# Credentials come from an AWX Machine credential or encrypted local vault.
+ansible_connection: local
+
+bigip_provider:
+  server: "{{ ansible_host }}"
+  user: "{{ ansible_user }}"
+  password: "{{ ansible_password }}"
+  validate_certs: true
+
+# Keys must exactly match inventory_hostname in your existing f5 inventory.
+# Each tenant has its own list to avoid assigning the same IP to multiple hosts.
+# Replace the empty mapping with your real configuration before running.
+bigip_self_ips_by_host: {}
+
+# Example only: uncomment and replace with your real tenant, VLAN, and IP.
+# bigip_self_ips_by_host:
+#   bigip-tenant01:
+#     - name: self_internal
+#       address: "192.0.2.10"
+#       netmask: "255.255.255.0"
+#       vlan: /Common/internal
+#       partition: Common
+#       allow_service:
+#         - none
+#     - name: self_external
+#       address: "198.51.100.10"
+#       netmask: "255.255.255.0"
+#       vlan: /Common/external
+#       partition: Common
+#       allow_service:
+#         - none
