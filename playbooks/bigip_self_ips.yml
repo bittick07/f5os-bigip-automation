@@ -12,6 +12,13 @@
     bigip_self_ips_effective: "{{ bigip_self_ips_by_host.get(inventory_hostname, []) }}"
 
   tasks:
+    - name: Show loaded self IP settings
+      ansible.builtin.debug:
+        msg:
+          host: "{{ inventory_hostname }}"
+          variable_type: "{{ bigip_self_ips_by_host | type_debug }}"
+          settings: "{{ bigip_self_ips_by_host }}"
+
     - name: Require self IP configuration for this tenant
       ansible.builtin.assert:
         that:
