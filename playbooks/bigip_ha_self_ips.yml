@@ -1,0 +1,140 @@
+---
+- name: Configure local self IPs on both BIG-IP HA members
+  hosts: f5
+  gather_facts: false
+  any_errors_fatal: true
+  vars_files:
+    - ../group_vars/bigip_ha_self_ips.yml
+
+  pre_tasks:
+    - name: Validate the pair before changing either device
+      ansible.builtin.assert:
+        that:
+          - bigip_ha_ready | bool
+          - bigip_ha_members | length == 2
+          - bigip_ha_members | unique | length == 2
+          - ansible_play_hosts_all | sort == bigip_ha_members | sort
+          - bigip_ha_sync_source in bigip_ha_members
+          - bigip_ha_floating_traffic_group != '/Common/traffic-group-local-only'
+          - bigip_ha_local_self_ips.get(inventory_hostname, []) | length > 0
+          - bigip_ha_floating_self_ips | length > 0
+          - not (bigip_ha_sync_enabled | bool) or (bigip_ha_device_group | length > 0)
+        fail_msg: >-
+          Configure both HA members, their local and floating self IPs, and the
+          sync source in group_vars/bigip_ha_self_ips.yml. Confirm existing HA
+          by setting bigip_ha_ready to true. Limit this job to exactly both members.
+
+    - name: Validate all local and floating self IP definitions
+      ansible.builtin.assert:
+        that:
+          - item.name is defined
+          - item.address is defined
+          - item.netmask is defined
+          - item.vlan is defined
+        fail_msg: Each self IP requires name, address, netmask, and vlan.
+      loop: >-
+        {{ bigip_ha_local_self_ips[bigip_ha_members[0]] +
+           bigip_ha_local_self_ips[bigip_ha_members[1]] + bigip_ha_floating_self_ips }}
+      loop_control:
+        label: "{{ item.name | default('unnamed self IP') }}"
+
+    - name: Require distinct local and floating addresses
+      ansible.builtin.assert:
+        that:
+          - addresses | unique | length == addresses | length
+        fail_msg: Local addresses must differ between members and from floating addresses.
+      vars:
+        addresses: >-
+          {{ (bigip_ha_local_self_ips[bigip_ha_members[0]] +
+              bigip_ha_local_self_ips[bigip_ha_members[1]] +
+              bigip_ha_floating_self_ips) | map(attribute='address') | list }}
+
+  tasks:
+    - name: Configure member-specific non-floating self IPs
+      f5networks.f5_modules.bigip_selfip:
+        name: "{{ item.name }}"
+        address: "{{ item.address }}"
+        netmask: "{{ item.netmask }}"
+        vlan: "{{ item.vlan }}"
+        partition: "{{ item.partition | default('Common') }}"
+        traffic_group: /Common/traffic-group-local-only
+        allow_service: "{{ item.allow_service | default(['none']) }}"
+        state: present
+        provider: "{{ bigip_provider }}"
+      loop: "{{ bigip_ha_local_self_ips[inventory_hostname] }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Save local self IP configuration on each member
+      f5networks.f5_modules.bigip_config:
+        save: true
+        provider: "{{ bigip_provider }}"
+      when: not ansible_check_mode
+
+- name: Configure shared floating self IPs from the designated sync source
+  hosts: f5
+  gather_facts: false
+  any_errors_fatal: true
+  vars_files:
+    - ../group_vars/bigip_ha_self_ips.yml
+
+  tasks:
+    - name: Configure floating self IPs on the sync source
+      f5networks.f5_modules.bigip_selfip:
+        name: "{{ item.name }}"
+        address: "{{ item.address }}"
+        netmask: "{{ item.netmask }}"
+        vlan: "{{ item.vlan }}"
+        partition: "{{ item.partition | default('Common') }}"
+        traffic_group: "{{ bigip_ha_floating_traffic_group }}"
+        allow_service: "{{ item.allow_service | default(['none']) }}"
+        state: present
+        provider: "{{ bigip_provider }}"
+      loop: "{{ bigip_ha_floating_self_ips }}"
+      loop_control:
+        label: "{{ item.name }}"
+      when: inventory_hostname == bigip_ha_sync_source
+
+    - name: Save floating self IP configuration on the sync source
+      f5networks.f5_modules.bigip_config:
+        save: true
+        provider: "{{ bigip_provider }}"
+      when:
+        - inventory_hostname == bigip_ha_sync_source
+        - not ansible_check_mode
+
+    - name: Push configuration from the source to the existing HA device group
+      f5networks.f5_modules.bigip_configsync_action:
+        device_group: "{{ bigip_ha_device_group }}"
+        sync_device_to_group: true
+        overwrite_config: false
+        provider: "{{ bigip_provider }}"
+      when:
+        - inventory_hostname == bigip_ha_sync_source
+        - bigip_ha_sync_enabled | bool
+        - not ansible_check_mode
+
+    - name: Report synchronization required when explicit sync is disabled
+      ansible.builtin.debug:
+        msg: >-
+          Floating self IPs are configured on {{ bigip_ha_sync_source }}.
+          Verify auto-sync completed, or manually sync this device to the HA
+          device group and save configuration on the peer before testing failover.
+      when:
+        - inventory_hostname == bigip_ha_sync_source
+        - not (bigip_ha_sync_enabled | bool)
+        - not ansible_check_mode
+
+- name: Save configuration on both members after synchronization
+  hosts: f5
+  gather_facts: false
+  vars_files:
+    - ../group_vars/bigip_ha_self_ips.yml
+  tasks:
+    - name: Save the BIG-IP running configuration
+      f5networks.f5_modules.bigip_config:
+        save: true
+        provider: "{{ bigip_provider }}"
+      when:
+        - bigip_ha_sync_enabled | bool
+        - not ansible_check_mode
