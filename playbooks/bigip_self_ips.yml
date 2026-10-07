@@ -1,0 +1,54 @@
+---
+- name: Configure standalone BIG-IP tenant self IPs
+  hosts: f5
+  gather_facts: false
+  collections:
+    - f5networks.f5_modules
+
+  vars_files:
+    - ../group_vars/bigip_self_ips.yml
+
+  vars:
+    bigip_self_ips_effective: "{{ bigip_self_ips_by_host.get(inventory_hostname, []) }}"
+
+  tasks:
+    - name: Require self IP configuration for this tenant
+      ansible.builtin.assert:
+        that:
+          - bigip_self_ips_effective | length > 0
+        fail_msg: >-
+          Add an entry for {{ inventory_hostname }} to bigip_self_ips_by_host
+          in group_vars/bigip_self_ips.yml using the existing tenant VLAN names.
+
+    - name: Validate required self IP fields
+      ansible.builtin.assert:
+        that:
+          - item.name is defined
+          - item.address is defined
+          - item.netmask is defined
+          - item.vlan is defined
+        fail_msg: Each self IP requires name, address, netmask, and vlan.
+      loop: "{{ bigip_self_ips_effective }}"
+      loop_control:
+        label: "{{ item.name | default('unnamed self IP') }}"
+
+    - name: Configure non-floating self IPs on existing VLANs
+      f5networks.f5_modules.bigip_selfip:
+        name: "{{ item.name }}"
+        address: "{{ item.address }}"
+        netmask: "{{ item.netmask }}"
+        vlan: "{{ item.vlan }}"
+        partition: "{{ item.partition | default('Common') }}"
+        traffic_group: /Common/traffic-group-local-only
+        allow_service: "{{ item.allow_service | default(['none']) }}"
+        state: present
+        provider: "{{ bigip_provider }}"
+      loop: "{{ bigip_self_ips_effective }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Save the BIG-IP running configuration
+      f5networks.f5_modules.bigip_config:
+        save: true
+        provider: "{{ bigip_provider }}"
+      when: not ansible_check_mode
