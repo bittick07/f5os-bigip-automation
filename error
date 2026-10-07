@@ -1,0 +1,21 @@
+msg: >
+  The conditional check 'bigip_self_ips_effective | length > 0' failed. The
+  error was: error while evaluating conditional (bigip_self_ips_effective |
+  length > 0): {{ bigip_self_ips_by_host.get(inventory_hostname, []) }}: 'list
+  object' has no attribute 'get'. 'list object' has no attribute 'get'. {{
+  bigip_self_ips_by_host.get(inventory_hostname, []) }}: 'list object' has no
+  attribute 'get'. 'list object' has no attribute 'get'
+
+
+  The error appears to be in '/runner/project/playbooks/bigip_self_ips.yml':
+  line 25, column 13, but may
+
+  be elsewhere in the file depending on the exact syntax problem.
+
+
+  The offending line appears to be:
+
+          that:
+            - bigip_self_ips_effective | length > 0
+              ^ here
+_ansible_no_log: false
